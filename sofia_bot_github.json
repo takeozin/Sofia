@@ -1,0 +1,271 @@
+{
+  "name": "Sofia",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {
+          "download": true,
+          "imageSize": "extraLarge"
+        }
+      },
+      "id": "trigger-telegram",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-photo-bool",
+              "leftValue": "={{ !!($json.message.photo || ($json.message.document && $json.message.document.mime_type.startsWith('image/'))) }}",
+              "operator": {
+                "operation": "true",
+                "type": "boolean",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "version": 2,
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          }
+        }
+      },
+      "id": "check-photo",
+      "name": "Foto ou Texto?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [288, 0]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-file-id",
+              "name": "file_id",
+              "type": "string",
+              "value": "={{ $json.message.photo ? $json.message.photo.slice(-1)[0].file_id : $json.message.document.file_id }}"
+            },
+            {
+              "id": "assign-caption",
+              "name": "user_prompt",
+              "type": "string",
+              "value": "={{ $json.message.caption || $json.message.text || 'Analise esta imagem de exercício. Forneça a resposta correta e uma explicação didática detalhada.' }}"
+            },
+            {
+              "id": "assign-chat-id",
+              "name": "chat_id",
+              "type": "string",
+              "value": "={{ $json.message.chat.id }}"
+            }
+          ]
+        }
+      },
+      "id": "extract-file-id",
+      "name": "Extrair File ID (Maior Resolução)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [560, -128]
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.file_id }}",
+        "additionalFields": {}
+      },
+      "id": "get-photo-file",
+      "name": "Baixar Foto (Telegram)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [848, -128]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "assign-text",
+              "name": "user_prompt",
+              "type": "string",
+              "value": "={{ $json.message.text }}"
+            },
+            {
+              "id": "assign-chat-id-text",
+              "name": "chat_id",
+              "type": "string",
+              "value": "={{ $json.message.chat.id }}"
+            }
+          ]
+        }
+      },
+      "id": "prepare-text",
+      "name": "Preparar Texto",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [560, 128]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $node[\"Extrair File ID (Maior Resolução)\"].json.user_prompt || $node[\"Preparar Texto\"].json.user_prompt }}",
+        "options": {
+          "systemMessage": "Você é um professor tutor de tecnologia e engenharia. Sua diretriz absoluta é: Sempre que receber uma questão (texto ou imagem), você deve obrigatoriamente fornecer a resposta correta e uma explicação didática detalhada do raciocínio. Se a atividade exigir normas acadêmicas, siga rigorosamente o padrão ABNT. Para códigos, explique a lógica linha a linha.",
+          "maxIterations": 10,
+          "passthroughBinaryImages": true
+        }
+      },
+      "id": "ai-agent",
+      "name": "Tutor de Estudos (Gemma)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [1120, 0]
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemma-4-31b-it",
+        "options": {
+          "maxOutputTokens": 8192,
+          "temperature": 0.4
+        }
+      },
+      "id": "gemini-model",
+      "name": "Google Gemma 4",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [1120, 240]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Foto ou Texto?').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "send-response",
+      "name": "Enviar Resposta (Telegram)",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1408, 0]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+      },
+      "id": "simple-memory",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [1232, 304]
+    }
+  ],
+  "connections": {
+    "Baixar Foto (Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Tutor de Estudos (Gemma)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair File ID (Maior Resolução)": {
+      "main": [
+        [
+          {
+            "node": "Baixar Foto (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Foto ou Texto?": {
+      "main": [
+        [
+          {
+            "node": "Extrair File ID (Maior Resolução)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Preparar Texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemma 4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Tutor de Estudos (Gemma)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Texto": {
+      "main": [
+        [
+          {
+            "node": "Tutor de Estudos (Gemma)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Foto ou Texto?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tutor de Estudos (Gemma)": {
+      "main": [
+        [
+          {
+            "node": "Enviar Resposta (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Tutor de Estudos (Gemma)",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
