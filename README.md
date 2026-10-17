@@ -1,11 +1,19 @@
 # Sofia - Bot de Estudos Inteligente (n8n)
 
-A **Sofia** é um bot de estudos para Telegram, construído no n8n e alimentado pela **LLM de sua preferência**. Ela foi pensada para ser uma tutora acadêmica em Tecnologia e Engenharia: em vez de só entregar a resposta, explica os conceitos e o raciocínio passo a passo.
+A **Sofia** é um bot de estudos para Telegram, construído no n8n e alimentado pela **LLM de sua preferência**. Ela foi pensada para ser uma tutora acadêmica em Tecnologia e Engenharia: responde de forma direta e explica o conceito que decide cada questão.
+
+## 📸 Demonstração
+
+<p align="center">
+  <img src="docs/apresentacao.png" alt="Sofia se apresentando no Telegram" width="48%">
+  &nbsp;
+  <img src="docs/questao-com-imagem.png" alt="Sofia respondendo a foto de uma questão de concurso sobre Scrum e DevOps" width="48%">
+</p>
 
 ## 🚀 Funcionalidades
 
 - **Texto e imagem**: entende mensagens de texto e fotos de exercícios (enviadas como foto ou como arquivo de imagem).
-- **Explicação didática**: identifica os conceitos envolvidos, resolve passo a passo e só então apresenta a resposta final.
+- **Respostas objetivas**: começa pela resposta, explica o porquê em poucos parágrafos e aponta pegadinhas comuns. Para uma explicação completa, basta pedir ("explica melhor").
 - **Modo dica**: comece a mensagem com `/dica` para receber apenas pistas, sem a resposta pronta.
 - **Normas ABNT e código**: segue a ABNT quando a atividade pede e explica algoritmos linha a linha.
 - **Contexto de conversa**: lembra as últimas 10 mensagens de cada chat.
