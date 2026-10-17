@@ -15,7 +15,59 @@
       "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1.2,
-      "position": [0, 0]
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-chat-autorizado",
+              "leftValue": "={{ 'COLOQUE_SEUS_CHAT_IDS_AQUI'.split(',').map(id => id.trim()).includes(String($json.message.chat.id)) }}",
+              "operator": {
+                "operation": "true",
+                "type": "boolean",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "version": 2,
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          }
+        }
+      },
+      "id": "check-authorized",
+      "name": "Chat Autorizado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "=Este bot é de uso restrito. Seu chat_id é {{ $json.message.chat.id }}; peça ao administrador para liberá-lo.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "send-unauthorized",
+      "name": "Avisar Acesso Negado",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        224
+      ]
     },
     {
       "parameters": {
@@ -24,7 +76,7 @@
           "conditions": [
             {
               "id": "condition-photo-bool",
-              "leftValue": "={{ !!($json.message.photo || ($json.message.document && $json.message.document.mime_type.startsWith('image/'))) }}",
+              "leftValue": "={{ !!($json.message.photo || ($json.message.document?.mime_type || '').startsWith('image/')) }}",
               "operator": {
                 "operation": "true",
                 "type": "boolean",
@@ -44,7 +96,10 @@
       "name": "Foto ou Texto?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
-      "position": [288, 0]
+      "position": [
+        448,
+        0
+      ]
     },
     {
       "parameters": {
@@ -60,7 +115,7 @@
               "id": "assign-caption",
               "name": "user_prompt",
               "type": "string",
-              "value": "={{ $json.message.caption || $json.message.text || 'Analise esta imagem de exercício. Forneça a resposta correta e uma explicação didática detalhada.' }}"
+              "value": "={{ $json.message.caption || 'Analise esta imagem de exercício. Forneça a resposta correta e uma explicação didática detalhada.' }}"
             },
             {
               "id": "assign-chat-id",
@@ -75,7 +130,10 @@
       "name": "Extrair File ID (Maior Resolução)",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [560, -128]
+      "position": [
+        672,
+        -160
+      ]
     },
     {
       "parameters": {
@@ -87,7 +145,42 @@
       "name": "Baixar Foto (Telegram)",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [848, -128]
+      "position": [
+        896,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "condition-has-text",
+              "leftValue": "={{ !!$json.message.text }}",
+              "operator": {
+                "operation": "true",
+                "type": "boolean",
+                "singleValue": true
+              },
+              "rightValue": ""
+            }
+          ],
+          "options": {
+            "version": 2,
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          }
+        }
+      },
+      "id": "check-text",
+      "name": "Tem Texto?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        96
+      ]
     },
     {
       "parameters": {
@@ -112,82 +205,154 @@
       "name": "Preparar Texto",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
-      "position": [560, 128]
+      "position": [
+        896,
+        32
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.message.chat.id }}",
+        "text": "Por enquanto eu só entendo mensagens de texto e imagens (foto ou arquivo de imagem). Me mande sua dúvida em um desses formatos!",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "send-unsupported",
+      "name": "Avisar Formato Não Suportado",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        224
+      ]
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "={{ $node[\"Extrair File ID (Maior Resolução)\"].json.user_prompt || $node[\"Preparar Texto\"].json.user_prompt }}",
+        "text": "={{ $('Extrair File ID (Maior Resolução)').isExecuted ? $('Extrair File ID (Maior Resolução)').item.json.user_prompt : $json.user_prompt }}",
         "options": {
-          "systemMessage": "Você é um professor tutor de tecnologia e engenharia. Sua diretriz absoluta é: Sempre que receber uma questão (texto ou imagem), você deve obrigatoriamente fornecer a resposta correta e uma explicação didática detalhada do raciocínio. Se a atividade exigir normas acadêmicas, siga rigorosamente o padrão ABNT. Para códigos, explique a lógica linha a linha.",
+          "systemMessage": "Você é a Sofia, uma tutora de estudos de tecnologia e engenharia.\n\nSempre que receber uma questão (texto ou imagem): 1) identifique os conceitos envolvidos; 2) explique o raciocínio passo a passo, de forma didática; 3) apresente a resposta final no fim.\n\nSe a mensagem começar com /dica, NÃO entregue a resposta final: dê apenas pistas e perguntas que levem o aluno a chegar nela sozinho.\n\nSe a atividade exigir normas acadêmicas, siga rigorosamente o padrão ABNT. Para códigos, explique a lógica linha a linha.\n\nFormatação: use apenas **negrito**, `código inline` e blocos ``` para código. Não use tabelas, LaTeX nem títulos com #; escreva fórmulas em texto simples (ex.: x^2 + 3x = 0).",
           "maxIterations": 10,
           "passthroughBinaryImages": true
         }
       },
       "id": "ai-agent",
-      "name": "Tutor de Estudos (Gemma)",
+      "name": "Tutor de Estudos",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
-      "position": [1120, 0]
+      "position": [
+        1120,
+        0
+      ]
     },
     {
       "parameters": {
-        "modelName": "models/gemma-4-31b-it",
         "options": {
           "maxOutputTokens": 8192,
           "temperature": 0.4
         }
       },
-      "id": "gemini-model",
-      "name": "Google Gemma 4",
+      "id": "chat-model",
+      "name": "LLM de Sua Preferência",
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
-      "position": [1120, 240]
+      "position": [
+        1056,
+        240
+      ],
+      "notes": "Escolha aqui o modelo que preferir. Para trocar de provedor (OpenAI, Anthropic, Ollama...), apague este nó e conecte outro Chat Model ao Tutor. Use um modelo multimodal para que a Sofia entenda imagens.",
+      "notesInFlow": true
     },
     {
       "parameters": {
-        "chatId": "={{ $('Foto ou Texto?').item.json.message.chat.id }}",
-        "text": "={{ $json.output }}",
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "id": "simple-memory",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1232,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// O Telegram aceita até 4096 caracteres por mensagem; a margem cobre as tags HTML e os escapes\nconst LIMITE = 3500;\n\nconst escapar = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\n// Divide por linhas. Se o corte cair dentro de um bloco ```, fecha o bloco nesta parte e reabre na próxima\nfunction dividir(texto) {\n  const partes = [];\n  let linhas = [];\n  let tamanho = 0;\n  let emCodigo = false;\n\n  const fecharParte = () => {\n    if (!linhas.length) return;\n    partes.push(linhas.join('\\n') + (emCodigo ? '\\n```' : ''));\n    linhas = emCodigo ? ['```'] : [];\n    tamanho = emCodigo ? 4 : 0;\n  };\n\n  for (const linhaOriginal of texto.split('\\n')) {\n    // Linhas maiores que o limite são cortadas à força\n    for (let i = 0; i < Math.max(linhaOriginal.length, 1); i += LIMITE) {\n      const linha = linhaOriginal.slice(i, i + LIMITE);\n      if (tamanho + linha.length + 1 > LIMITE) fecharParte();\n      linhas.push(linha);\n      tamanho += linha.length + 1;\n      if (linha.trimStart().startsWith('```')) emCodigo = !emCodigo;\n    }\n  }\n  fecharParte();\n\n  return partes.filter((p) => p.replace(/```/g, '').trim());\n}\n\n// Converte o Markdown básico que a LLM usa para o HTML do Telegram.\n// Em HTML só <, > e & precisam de escape, então asteriscos e underlines soltos não quebram o envio.\nfunction paraHtml(md) {\n  return md\n    .split(/(```[^\\n]*\\n[\\s\\S]*?```)/g)\n    .map((trecho, i) => {\n      if (i % 2 === 1) {\n        const codigo = trecho.replace(/^```[^\\n]*\\n/, '').replace(/\\n?```$/, '');\n        return `<pre>${escapar(codigo)}</pre>`;\n      }\n      return escapar(trecho)\n        .replace(/`([^`\\n]+)`/g, '<code>$1</code>')\n        .replace(/\\*\\*([^*\\n]+)\\*\\*/g, '<b>$1</b>')\n        .replace(/^#{1,6}\\s+(.+)$/gm, '<b>$1</b>');\n    })\n    .join('');\n}\n\nconst texto =\n  String($json.output || '').trim() ||\n  'Não consegui gerar uma resposta. Tente reformular a pergunta.';\nconst chatId = $('Telegram Trigger').first().json.message.chat.id;\n\nreturn dividir(texto).map((parte) => ({\n  json: { chat_id: chatId, html: paraHtml(parte), texto: parte },\n  pairedItem: 0,\n}));\n"
+      },
+      "id": "format-response",
+      "name": "Formatar Resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.html }}",
         "additionalFields": {
           "appendAttribution": false,
-          "parse_mode": "Markdown"
+          "parse_mode": "HTML"
         }
       },
       "id": "send-response",
       "name": "Enviar Resposta (Telegram)",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [1408, 0]
+      "position": [
+        1696,
+        0
+      ],
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
-        "sessionIdType": "customKey",
-        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}"
+        "chatId": "={{ $('Formatar Resposta').item.json.chat_id }}",
+        "text": "={{ $('Formatar Resposta').item.json.texto }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
       },
-      "id": "simple-memory",
-      "name": "Simple Memory",
-      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
-      "typeVersion": 1.3,
-      "position": [1232, 304]
+      "id": "send-plain",
+      "name": "Enviar Sem Formatação",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1920,
+        96
+      ]
     }
   ],
   "connections": {
-    "Baixar Foto (Telegram)": {
+    "Telegram Trigger": {
       "main": [
         [
           {
-            "node": "Tutor de Estudos (Gemma)",
+            "node": "Chat Autorizado?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Extrair File ID (Maior Resolução)": {
+    "Chat Autorizado?": {
       "main": [
         [
           {
-            "node": "Baixar Foto (Telegram)",
+            "node": "Foto ou Texto?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Avisar Acesso Negado",
             "type": "main",
             "index": 0
           }
@@ -205,19 +370,48 @@
         ],
         [
           {
-            "node": "Preparar Texto",
+            "node": "Tem Texto?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Google Gemma 4": {
-      "ai_languageModel": [
+    "Extrair File ID (Maior Resolução)": {
+      "main": [
         [
           {
-            "node": "Tutor de Estudos (Gemma)",
-            "type": "ai_languageModel",
+            "node": "Baixar Foto (Telegram)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baixar Foto (Telegram)": {
+      "main": [
+        [
+          {
+            "node": "Tutor de Estudos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tem Texto?": {
+      "main": [
+        [
+          {
+            "node": "Preparar Texto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Avisar Formato Não Suportado",
+            "type": "main",
             "index": 0
           }
         ]
@@ -227,25 +421,47 @@
       "main": [
         [
           {
-            "node": "Tutor de Estudos (Gemma)",
+            "node": "Tutor de Estudos",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Telegram Trigger": {
+    "LLM de Sua Preferência": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Tutor de Estudos",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Tutor de Estudos",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tutor de Estudos": {
       "main": [
         [
           {
-            "node": "Foto ou Texto?",
+            "node": "Formatar Resposta",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Tutor de Estudos (Gemma)": {
+    "Formatar Resposta": {
       "main": [
         [
           {
@@ -256,12 +472,13 @@
         ]
       ]
     },
-    "Simple Memory": {
-      "ai_memory": [
+    "Enviar Resposta (Telegram)": {
+      "main": [
+        [],
         [
           {
-            "node": "Tutor de Estudos (Gemma)",
-            "type": "ai_memory",
+            "node": "Enviar Sem Formatação",
+            "type": "main",
             "index": 0
           }
         ]
