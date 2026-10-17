@@ -22,12 +22,12 @@ A **Sofia** é um bot de estudos para Telegram, construído no n8n e alimentado 
 
 ## 🔀 Como funciona
 
-```
-Telegram ─► Chat autorizado? ─► Foto ou texto? ─► Tutor (LLM + memória) ─► Formatar e dividir ─► Telegram
-                 │ não                  │ outro formato
-                 ▼                      ▼
-          avisa o chat_id       avisa que não suporta
-```
+![Workflow da Sofia no editor do n8n](docs/workflow-n8n.png)
+
+1. **Chat Autorizado?** barra quem não está liberado e responde com o `chat_id` da pessoa.
+2. **Foto ou Texto?** e **Tem Texto?** separam imagens, textos e formatos não suportados.
+3. O **Tutor de Estudos** responde usando a LLM escolhida e a memória da conversa.
+4. **Formatar Resposta** divide o texto em partes e converte para HTML; se o Telegram recusar, **Enviar Sem Formatação** reenvia em texto puro.
 
 ## 🛠️ Como instalar
 
@@ -48,9 +48,14 @@ Telegram ─► Chat autorizado? ─► Foto ou texto? ─► Tutor (LLM + memó
 - Áudio, vídeo, stickers e documentos que não são imagem (como PDF) ainda não são processados; o bot avisa o usuário.
 - A formatação no Telegram suporta negrito, código inline e blocos de código. Tabelas e fórmulas em LaTeX aparecem como texto simples.
 
+## 🗺️ Roadmap
+
+A próxima fase é um banco de dados para a Sofia lembrar o perfil de cada aluno (curso, período, cargo atual, objetivo) e manter o histórico mesmo se o n8n reiniciar. Veja o planejamento completo em [ROADMAP.md](ROADMAP.md).
+
 ## 📁 Estrutura do repositório
 
 - `sofia_bot_github.json`: exportação do workflow do n8n (sem credenciais).
+- `ROADMAP.md`: o que já foi feito e as próximas fases.
 - `docs/`: prints usados neste README.
 - `README.md`: este arquivo.
 
