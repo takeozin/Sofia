@@ -51,7 +51,12 @@ Telegram ─► Chat autorizado? ─► Foto ou texto? ─► Tutor (LLM + memó
 ## 📁 Estrutura do repositório
 
 - `sofia_bot_github.json`: exportação do workflow do n8n (sem credenciais).
+- `docs/`: prints usados neste README.
 - `README.md`: este arquivo.
+
+## 📄 Licença
+
+Distribuído sob a licença MIT. Veja o arquivo [LICENSE](LICENSE).
 
 ---
 *Este projeto foi desenvolvido com foco em acessibilidade acadêmica e suporte ao aprendizado contínuo.*
